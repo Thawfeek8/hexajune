@@ -1,0 +1,202 @@
+PROCEDURE FOR ADD_RESTAURANT
+
+create or replace procedure addrestaurant (p_name in varchar2, p_city in varchar2, p_email in varchar2, p_mobile in varchar2, p_rating in number
+) 
+as
+    v_max_id number;
+    v_new_id number;
+begin
+   
+    select max(restaurantid) into v_max_id from restaurant;
+
+    if v_max_id is null then
+        v_new_id := 1;
+    else
+        v_new_id := v_max_id + 1;
+    end if;
+
+    insert into restaurant (restaurantid, restaurantname, city, email, mobile, rating) 
+values (v_new_id, p_name, p_city, p_email, p_mobile, p_rating);
+
+    dbms_output.put_line('Restaurant added with ID: ' || v_new_id);
+
+exception
+     when dup_val_on_index then
+        dbms_output.put_line('Error: Restaurant with this ID already exists.');
+end;
+/
+-----------------------------------------------------------------------------------------------------------------
+
+Procedure for SearchByRestaurantId
+
+create or replace procedure searchbyrestaurantid(p_id restaurant.restaurantid%type)
+as
+    v_name   restaurant.restaurantname%type;
+    v_city   restaurant.city%type;
+    v_email  restaurant.email%type;
+    v_mobile restaurant.mobile%type;
+    v_rating restaurant.rating%type;
+
+begin
+    select restaurantname, city, email, mobile, rating
+    into v_name, v_city, v_email, v_mobile, v_rating
+    from restaurant
+    where restaurantid = p_id;
+
+    dbms_output.put_line('Restaurant Details:');
+    dbms_output.put_line('Name   : ' || v_name);
+    dbms_output.put_line('City   : ' || v_city);
+    dbms_output.put_line('Email  : ' || v_email);
+    dbms_output.put_line('Mobile : ' || v_mobile);
+    dbms_output.put_line('Rating : ' || v_rating);
+
+exception
+    when no_data_found then
+        dbms_output.put_line('Error: Restaurant with ID ' || p_id || ' not found.');
+end;
+/
+
+
+---------------------------------------------------------------------------------------------------------
+
+Procedure for UpdateRestaurant
+
+create or replace procedure updateRestaurant(p_id number, p_name varchar2,p_city varchar2,
+    p_email   varchar2, p_mobile  varchar2, p_rating  number)
+as
+    v_count number;
+begin
+  
+    select count(*) into v_count from restaurant where restaurantid = p_id;
+
+    if v_count = 0 then
+        dbms_output.put_line('No restaurant found with ID ' || p_id);
+    else
+            update restaurant set restaurantname = p_name, city = p_city, email = p_email,
+            mobile = p_mobile, rating = p_rating where restaurantid = p_id;
+
+        dbms_output.put_line('Restaurant with ID ' || p_id || ' updated successfully.');
+    end if;
+
+exception
+    when no_data_found then
+              dbms_output.put_line('Error: Restaurant with ID ' || p_id || ' not found.');
+end;
+/
+
+--------------------------------------------------------------------------------------------------------------
+Procedure for DeleteRestaurantById
+
+create or replace procedure deleterestaurantbyid(p_id number)
+
+as
+    v_count number;
+begin
+   
+    select count(*) into v_count from restaurant where  restaurantid = p_id;
+
+     if v_count = 0 then
+        raise no_data_found;
+    else
+        delete from restaurant where restaurantid = p_id;
+
+        dbms_output.put_line('Restaurant with ID ' || p_id || ' deleted successfully.');
+    end if;
+
+exception
+    when no_data_found then
+         dbms_output.put_line('Error: Restaurant with ID ' || p_id || ' not found.');
+end;
+/
+----------------------------------------------------------------------------------------------
+ Procedure with Cursor to Print All Restaurant Details:
+
+
+create or replace procedure print_all_restaurants
+as
+    cursor c_restaurants is
+        select restaurantid, restaurantname, city, email, mobile, rating from restaurant;
+    
+    v_restaurantid restaurant.restaurantid%type;
+    v_restaurantname restaurant.restaurantname%type;
+    v_city restaurant.city%type;
+    v_email restaurant.email%type;
+    v_mobile restaurant.mobile%type;
+    v_rating restaurant.rating%type;
+begin
+    open c_restaurants;
+    loop
+        fetch c_restaurants into v_restaurantid, v_restaurantname, v_city, v_email, v_mobile, v_rating;
+        exit when c_restaurants%notfound;
+        
+        dbms_output.put_line('Restaurant ID : ' || v_restaurantid);
+        dbms_output.put_line('Name          : ' || v_restaurantname);
+        dbms_output.put_line('City          : ' || v_city);
+        dbms_output.put_line('Email         : ' || v_email);
+        dbms_output.put_line('Mobile        : ' || v_mobile);
+        dbms_output.put_line('Rating        : ' || v_rating);
+        dbms_output.put_line('-------------------------------');
+    end loop;
+    close c_restaurants;
+exception
+    when others then
+        dbms_output.put_line('Error: ' || sqlerrm);
+end;
+/
+------------------------------------------------------------------------------------------------------------
+Write a procedure with output parameters to searchRestaurantById
+
+
+create or replace procedure searchRestaurantById(p_idin restaurant.restaurantId%type, p_name out restaurant.restaurantName%type, p_city out restaurant.city%type, p_email out restaurant.email%type,         
+p_mobile out restaurant.mobile%type, p_rating out restaurant.rating%type )
+as
+begin
+    select restaurantName, city, email, mobile, rating
+    into p_name, p_city, p_email, p_mobile, p_rating
+    from restaurant
+    where restaurantId = p_id;
+
+exception
+    when no_data_found then
+        dbms_output.put_line('Error: Restaurant with ID ' || p_id || ' not found.');
+    end;
+/
+
+
+-------------------------------------------------------------------------------------------------------------------
+Trigger
+
+here we need to set whether the operation is insert or delete or update appropriately
+
+Triger for inserting
+
+create or replace trigger trg_insert_restaurant
+after insert on restaurant for each row
+begin
+    insert into restaurantbackup (restaurantid, restaurantname, city, email, mobile, rating, operation, activityon) values (:new.restaurantid, :new.restaurantname, :new.city, :new.email, :new.mobile, :new.rating, 'insert', sysdate);
+end;
+/
+
+---------------------------------------------------------------------------------------------
+
+Trigger for Update
+
+create or replace trigger trg_update_restaurant
+after update on restaurant for each row
+begin
+    insert into restaurantbackup (restaurantid, restaurantname, city, email, mobile, rating, operation, activityon) 
+    values (:old.restaurantid, :old.restaurantname, :old.city, :old.email, :old.mobile, :old.rating, 'update', sysdate);
+end;
+/
+
+
+-------------------------------------------------------------------------------------------
+
+Trigger for Delete
+
+create or replace trigger trg_delete_restaurant after delete on restaurant for each row
+begin
+    insert into restaurantbackup (restaurantid, restaurantname, city, email, mobile, rating, operation, activityon)          values (:old.restaurantid, :old.restaurantname, :old.city, :old.email, :old.mobile, :old.rating, 'delete', sysdate);
+end;
+/
+
